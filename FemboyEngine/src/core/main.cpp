@@ -72,6 +72,26 @@ static void LoadGameConfig() {
 	g_GameConfig.height = 600;
 }
 
+static bool CompileShader(const std::string& shaderFile, render::VertexShader** ppVertexShader, render::PixelShader** ppPixelShader, render::InputLayout** ppInputLayout, const render::InputElement_t* const pInputElements, uint32_t numElements) {
+	ScopedPtr<render::ShaderBytecode> pVSCode, pPSCode;
+
+	render::ShaderCompiler* pShaderCompiler = g_pDevice->GetShaderCompiler();
+
+	if (!pShaderCompiler->CompileShaderFile(shaderFile, render::ShaderStage::Vertex, pVSCode)) {
+		return false;
+	}
+
+	if (!pShaderCompiler->CompileShaderFile(shaderFile, render::ShaderStage::Pixel, pPSCode)) {
+		return false;
+	}
+
+	*ppVertexShader = g_pDevice->CreateVertexShader(pVSCode->GetData(), pVSCode->GetSize());
+	*ppPixelShader = g_pDevice->CreatePixelShader(pPSCode->GetData(), pPSCode->GetSize());
+	*ppInputLayout = g_pDevice->CreateInputLayout(pInputElements, numElements, pVSCode->GetData(), pVSCode->GetSize());
+
+	return true;
+}
+
 int EntryPoint() {
 	LoadGameConfig();
 
@@ -119,6 +139,19 @@ int EntryPoint() {
 
 	render::Buffer* pVB = g_pDevice->CreateVertexBuffer(_countof(vertices), sizeof(Vertex_t), render::BufferUsage::Default, vertices);
 
+	render::VertexShader* pVS;
+	render::PixelShader* pPS;
+	render::InputLayout* pInputLayout;
+
+	render::InputElement_t inputElems[] = {
+		render::InputElement_t("POSITION", 0, render::RenderFormat::R32G32B32_Float, 0)
+	};
+
+	if (!CompileShader("src/hlsl/lit.hlsl", &pVS, &pPS, &pInputLayout, inputElems, _countof(inputElems))) {
+		printf("Failed to compile shader\n");
+		return -1;
+	}
+
 	bool exitGame = false;
 
 	while (!exitGame) {
@@ -130,6 +163,11 @@ int EntryPoint() {
 		}
 
 		pImmediateContext->ClearRenderTarget(pRenderTarget, { 1.f, 0.f, 0.f, 1.f });
+		pImmediateContext->SetRenderTargets(&pRenderTarget, 1);
+
+		pImmediateContext->SetInputLayout(pInputLayout);
+		pImmediateContext->SetVertexShader(pVS);
+		pImmediateContext->SetPixelShader(pPS);
 
 		pImmediateContext->SetViewports(&viewport, 1);
 		pImmediateContext->SetPrimtiveTopology(render::PrimitiveToplogy::TriangleList);

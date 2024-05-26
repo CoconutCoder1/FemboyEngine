@@ -7,6 +7,7 @@
 
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
 namespace fe::render {
 
@@ -22,6 +23,9 @@ DXGI_FORMAT ConvertRenderFormat(RenderFormat::Enum format) {
 	case RenderFormat::R32_Float:
 		return DXGI_FORMAT_R32_FLOAT;
 
+	case RenderFormat::R32G32B32_Float:
+		return DXGI_FORMAT_R32G32B32_FLOAT;
+
 	case RenderFormat::R32G32B32A32_Float:
 		return DXGI_FORMAT_R32G32B32A32_FLOAT;
 
@@ -29,6 +33,7 @@ DXGI_FORMAT ConvertRenderFormat(RenderFormat::Enum format) {
 		break;
 	}
 
+	SDL_assert(!"Unknown RenderFormat value");
 	return DXGI_FORMAT_UNKNOWN;
 }
 
@@ -99,7 +104,7 @@ D3D_PRIMITIVE_TOPOLOGY ConvertPrimitiveTopology(PrimitiveToplogy::Enum topology)
 // ===============================================
 // DirectX 11 utility functions
 // ===============================================
-static void CreateBuffer(ID3D11Device* pDevice, ID3D11Buffer** ppBufferOut, uint32_t sizeInBytes, uint32_t strideInBytes, UINT bindFlags, BufferUsage::Enum usage, const void* pInitData) {
+static void CreateBuffer(ID3D11Device* pDevice, D3D11_BUFFER_DESC* pDescOut, ID3D11Buffer** ppBufferOut, uint32_t sizeInBytes, uint32_t strideInBytes, UINT bindFlags, BufferUsage::Enum usage, const void* pInitData) {
 	D3D11_BUFFER_DESC bd = {};
 	bd.BindFlags = bindFlags;
 	bd.ByteWidth = sizeInBytes;
@@ -114,6 +119,10 @@ static void CreateBuffer(ID3D11Device* pDevice, ID3D11Buffer** ppBufferOut, uint
 	srd.pSysMem = pInitData;
 
 	ThrowIfFailed(pDevice->CreateBuffer(&bd, pInitData ? &srd : nullptr, ppBufferOut));
+
+	if (pDescOut) {
+		*pDescOut = bd;
+	}
 }
 
 
@@ -150,10 +159,9 @@ public:
 
 class Buffer_Dx11 : public Buffer {
 public:
-	Buffer_Dx11(wrl::ComPtr<ID3D11Buffer> pBuffer)
-		: m_pBuffer(pBuffer)
+	Buffer_Dx11(wrl::ComPtr<ID3D11Buffer> pBuffer, const D3D11_BUFFER_DESC& desc)
+		: m_pBuffer(pBuffer), m_Desc(desc)
 	{
-		pBuffer->GetDesc(&m_Desc);
 	}
 
 	virtual ~Buffer_Dx11() = default;
@@ -228,6 +236,7 @@ bool RenderDeviceDx11::Initialize(const RenderDeviceParams_t& params) {
 		&m_pDevice, nullptr, &m_pDeviceContext
 	));
 
+	m_pShaderCompiler = ScopedPtr<ShaderCompiler>(new ShaderCompilerDx11());
 	m_pImmediateContext = ScopedPtr<RenderContextDx11>(new RenderContextDx11(m_pDeviceContext));
 
 	return true;
@@ -281,7 +290,7 @@ InputLayout* RenderDeviceDx11::CreateInputLayout(InputElement_t const* const pEl
 		const InputElement_t& elem = pElements[i];
 
 		inputElements[i] = {
-			elem.semanticName.c_str(),
+			elem.semanticName.data(),
 			elem.semanticIndex,
 			ConvertRenderFormat(elem.format),
 			0,
@@ -300,9 +309,10 @@ InputLayout* RenderDeviceDx11::CreateInputLayout(InputElement_t const* const pEl
 
 Buffer* RenderDeviceDx11::CreateVertexBuffer(uint32_t numVertices, uint32_t strideInBytes, BufferUsage::Enum usage, const void* pInitData) {
 	wrl::ComPtr<ID3D11Buffer> pBuffer;
-	CreateBuffer(m_pDevice.Get(), &pBuffer, numVertices * strideInBytes, strideInBytes, D3D11_BIND_VERTEX_BUFFER, usage, pInitData);
+	D3D11_BUFFER_DESC bufferDesc;
+	CreateBuffer(m_pDevice.Get(), &bufferDesc, &pBuffer, numVertices * strideInBytes, strideInBytes, D3D11_BIND_VERTEX_BUFFER, usage, pInitData);
 
-	return new Buffer_Dx11(pBuffer);
+	return new Buffer_Dx11(pBuffer, bufferDesc);
 }
 
 Texture2D* RenderDeviceDx11::CreateTexture2D(uint32_t width, uint32_t height, RenderFormat::Enum format, const void* pInitData, uint32_t arraySize) {
@@ -329,6 +339,10 @@ RenderTarget* RenderDeviceDx11::CreateRenderTarget(Texture2D* pTexture) {
 	ThrowIfFailed(m_pDevice->CreateRenderTargetView(pTextureDx11->m_pTexture.Get(), nullptr, &pRTV));
 
 	return new RenderTarget_Dx11(pRTV);
+}
+
+ShaderCompiler* RenderDeviceDx11::GetShaderCompiler() const {
+	return m_pShaderCompiler.get();
 }
 
 ID3D11Device* RenderDeviceDx11::D3D11Device() const {
@@ -415,13 +429,25 @@ void RenderContextDx11::SetViewports(const Viewport_t* const ppViewports, uint32
 	m_pContext->RSSetViewports(numViewports, viewports.data());
 }
 
+void RenderContextDx11::SetVertexShader(VertexShader* pVertexShader) {
+	VertexShader_Dx11* pVertexShaderDx11 = reinterpret_cast<VertexShader_Dx11*>(pVertexShader);
+
+	m_pContext->VSSetShader(pVertexShaderDx11->m_pShader.Get(), nullptr, 0);
+}
+
+void RenderContextDx11::SetPixelShader(PixelShader* pVertexShader) {
+	PixelShader_Dx11* pPixelShaderDx11 = reinterpret_cast<PixelShader_Dx11*>(pVertexShader);
+
+	m_pContext->PSSetShader(pPixelShaderDx11->m_pShader.Get(), nullptr, 0);
+}
+
 void RenderContextDx11::ClearRenderTarget(const RenderTarget* pRenderTarget, const std::array<float, 4>& clearColor) {
 	const RenderTarget_Dx11* pRenderTargetDx11 = reinterpret_cast<const RenderTarget_Dx11*>(pRenderTarget);
 
 	m_pContext->ClearRenderTargetView(pRenderTargetDx11->m_pRTV.Get(), clearColor.data());
 }
 
-void RenderContextDx11::SetRenderTargets(const RenderTarget** ppRenderTargets, uint32_t numRenderTargets) {
+void RenderContextDx11::SetRenderTargets(RenderTarget const* const* ppRenderTargets, uint32_t numRenderTargets) {
 	std::array<ID3D11RenderTargetView*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> pRenderTargetList;
 
 	for (uint32_t i = 0; i < numRenderTargets; i++) {
@@ -437,6 +463,12 @@ void RenderContextDx11::SetPrimtiveTopology(PrimitiveToplogy::Enum topology) {
 	m_pContext->IASetPrimitiveTopology(ConvertPrimitiveTopology(topology));
 }
 
+void RenderContextDx11::SetInputLayout(InputLayout* pInputLayout) {
+	InputLayout_Dx11* pInputLayoutDx11 = reinterpret_cast<InputLayout_Dx11*>(pInputLayout);
+
+	m_pContext->IASetInputLayout(pInputLayoutDx11->m_pLayout.Get());
+}
+
 void RenderContextDx11::SetVertexBuffer(Buffer* pVertexBuffer) {
 	Buffer_Dx11* pBufferDx11 = reinterpret_cast<Buffer_Dx11*>(pVertexBuffer);
 
@@ -447,6 +479,87 @@ void RenderContextDx11::SetVertexBuffer(Buffer* pVertexBuffer) {
 
 void RenderContextDx11::Draw(uint32_t vertexCount, uint32_t startVertexLocation) {
 	m_pContext->Draw(vertexCount, startVertexLocation);
+}
+
+// ===============================================
+// DirectX 11 shader compiler implementation
+// ===============================================
+class ShaderBytecodeDx11 : public ShaderBytecode {
+public:
+	ShaderBytecodeDx11(wrl::ComPtr<ID3DBlob> pBytecode)
+		: m_pBytecode(pBytecode) {}
+
+	virtual ~ShaderBytecodeDx11() = default;
+
+	virtual void* GetData() const {
+		return m_pBytecode->GetBufferPointer();
+	}
+
+	virtual size_t GetSize() const {
+		return m_pBytecode->GetBufferSize();
+	}
+
+	wrl::ComPtr<ID3DBlob> m_pBytecode;
+};
+
+#define MAKE_HLSL_VERSION(major, minor) major ## minor
+
+std::string GetShaderTarget(uint8_t targetVersion) {
+	return std::to_string(targetVersion / 10) + "_" + std::to_string(targetVersion % 10);
+}
+
+static const uint8_t hlslVersion = MAKE_HLSL_VERSION(5, 0);
+static const std::string hlslVersionTarget = GetShaderTarget(hlslVersion);
+
+bool ShaderCompilerDx11::CompileShaderSource(const std::string& source, ShaderStage::Enum stage, ScopedPtr<ShaderBytecode>& pBytecode) {
+	std::string entry = "main";
+	std::string target = "";
+
+	pBytecode = nullptr;
+	
+	if (stage == ShaderStage::Vertex) {
+		entry = "VSMain";
+		target = "vs_" + hlslVersionTarget;
+	}
+	else if (stage == ShaderStage::Pixel) {
+		entry = "PSMain";
+		target = "ps_" + hlslVersionTarget;
+	}
+
+	wrl::ComPtr<ID3DBlob> pCode;
+	wrl::ComPtr<ID3DBlob> pError;
+
+	HRESULT hr = D3DCompile(source.data(), source.size(), nullptr, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, entry.c_str(), target.c_str(), D3DCOMPILE_DEBUG, 0, &pCode, &pError);
+	if (FAILED(hr)) {
+		if (pError) {
+			printf("HLSL Compile Error (HRESULT: %x): %s\n", hr, reinterpret_cast<char*>(pError->GetBufferPointer()));
+		}
+		return false;
+	}
+
+	pBytecode = ScopedPtr<ShaderBytecode>(new ShaderBytecodeDx11(pCode));
+
+	return true;
+}
+
+bool ShaderCompilerDx11::CompileShaderFile(const std::string& sourceFile, ShaderStage::Enum stage, ScopedPtr<ShaderBytecode>& pBytecode) {
+	wrl::ComPtr<ID3DBlob> pShaderSource;
+
+	pBytecode = nullptr;
+
+	std::wstring wideFilePath(sourceFile.begin(), sourceFile.end());
+
+	HRESULT hr = D3DReadFileToBlob(wideFilePath.c_str(), &pShaderSource);
+	if (FAILED(hr)) {
+		if (hr == D3D11_ERROR_FILE_NOT_FOUND) {
+			printf("Could read HLSL source file for compiling: %s\n", sourceFile.c_str());
+		}
+		return false;
+	}
+
+	std::string shaderSourceStr(reinterpret_cast<char*>(pShaderSource->GetBufferPointer()), pShaderSource->GetBufferSize());
+
+	return CompileShaderSource(shaderSourceStr, stage, pBytecode);
 }
 
 }

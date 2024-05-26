@@ -7,8 +7,10 @@ namespace fe::render {
 
 struct RenderFormat {
 	enum Enum : uint32_t {
+		Unknown,
 		R8G8B8A8_UNorm,
 		R32_Float,
+		R32G32B32_Float,
 		R32G32B32A32_Float,
 	};
 };
@@ -54,11 +56,19 @@ struct BindFlags {
 	};
 };
 
+constexpr uint32_t InputElement_ByteOffset_Append = static_cast<uint32_t>(-1);
+
 struct InputElement_t {
 	std::string semanticName;
 	uint32_t semanticIndex;
 	RenderFormat::Enum format;
 	uint32_t byteOffset;
+
+	InputElement_t()
+		: semanticName(""), semanticIndex(0), format(RenderFormat::Unknown), byteOffset(-1) {}
+
+	InputElement_t(const std::string& semanticName, uint32_t semanticIndex, RenderFormat::Enum format, uint32_t byteOffset = InputElement_ByteOffset_Append)
+		: semanticName(semanticName), semanticIndex(semanticIndex), format(format), byteOffset(byteOffset) {}
 };
 
 class RenderResource {

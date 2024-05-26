@@ -14,6 +14,13 @@ namespace fe::render {
 
 class RenderContextDx11;
 
+class ShaderCompilerDx11 : public ShaderCompiler {
+public:
+	virtual ~ShaderCompilerDx11() = default;
+	virtual bool CompileShaderSource(const std::string& source, ShaderStage::Enum stage, ScopedPtr<ShaderBytecode>& pBytecode);
+	virtual bool CompileShaderFile(const std::string& sourceFile, ShaderStage::Enum stage, ScopedPtr<ShaderBytecode>& pBytecode);
+};
+
 class SwapChainDx11 : public SwapChain {
 public:
 	virtual ~SwapChainDx11() = default;
@@ -59,6 +66,8 @@ public:
 
 	virtual RenderTarget* CreateRenderTarget(Texture2D* pTexture);
 
+	virtual ShaderCompiler* GetShaderCompiler() const;
+
 	ID3D11Device* D3D11Device() const;
 
 private:
@@ -67,6 +76,8 @@ private:
 
 	ScopedPtr<RenderContextDx11> m_pImmediateContext;
 	std::vector<ScopedPtr<SwapChainDx11>> m_pSwapChainList;
+
+	ScopedPtr<ShaderCompiler> m_pShaderCompiler;
 };
 
 class RenderContextDx11 : public RenderContext {
@@ -76,10 +87,14 @@ public:
 
 	virtual void SetViewports(const Viewport_t* const ppViewports, uint32_t numViewports);
 
+	virtual void SetVertexShader(VertexShader* pVertexShader);
+	virtual void SetPixelShader(PixelShader* pVertexShader);
+
 	virtual void ClearRenderTarget(const RenderTarget* pRenderTarget, const std::array<float, 4>& clearColor);
-	virtual void SetRenderTargets(const RenderTarget** ppRenderTargets, uint32_t numRenderTargets);
+	virtual void SetRenderTargets(RenderTarget const* const* ppRenderTargets, uint32_t numRenderTargets);
 
 	virtual void SetPrimtiveTopology(PrimitiveToplogy::Enum topology);
+	virtual void SetInputLayout(InputLayout* pInputLayout);
 	virtual void SetVertexBuffer(Buffer* pVertexBuffer);
 
 	virtual void Draw(uint32_t vertexCount, uint32_t startVertexLocation);

@@ -3,6 +3,7 @@
 #include "swapchain.h"
 #include "rendercontext.h"
 #include "renderresource.h"
+#include "shadercompiler.h"
 
 namespace fe::render {
 
@@ -30,6 +31,8 @@ public:
 	virtual Texture2D* CreateTexture2D(uint32_t width, uint32_t height, RenderFormat::Enum format, const void* pInitData = nullptr, uint32_t arraySize = 1u) = 0;
 
 	virtual RenderTarget* CreateRenderTarget(Texture2D* pTexture) = 0;
+
+	virtual ShaderCompiler* GetShaderCompiler() const = 0;
 };
 
 }
