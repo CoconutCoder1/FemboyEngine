@@ -27,9 +27,6 @@
     <ClInclude Include="src\rendersystem\swapchain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\rendersystem\dx11\swapchaindx11.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\rendersystem\dx11\dx11.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -45,12 +42,15 @@
     <ClInclude Include="src\rendersystem\rendercontext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\rendersystem\viewport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\rendersystem\shadercompiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\rendersystem\dx11\renderdevicedx11.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\rendersystem\dx11\swapchaindx11.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\core\main.cpp">

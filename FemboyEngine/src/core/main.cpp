@@ -19,14 +19,14 @@ struct GameConfig_t {
 	bool isBorderless;
 };
 
-struct Vertex {
+struct Vertex_t {
 	float x, y, z;
 
-	Vertex() {
+	Vertex_t() {
 		x = y = z = 0.f;
 	}
 
-	Vertex(float x, float y, float z)
+	Vertex_t(float x, float y, float z)
 		: x(x), y(y), z(z) {}
 };
 
@@ -106,16 +106,18 @@ int EntryPoint() {
 
 	g_pSwapChain->SetSyncInterval(1U);
 
-	Vertex vertices[] = {
-		Vertex(-0.5f, -0.5f, 0.f),
-		Vertex(0.f, 0.5f, 0.f),
-		Vertex(0.5f, -0.5f, 0.f),
+	Vertex_t vertices[] = {
+		Vertex_t(-0.5f, -0.5f, 0.f),
+		Vertex_t(0.f, 0.5f, 0.f),
+		Vertex_t(0.5f, -0.5f, 0.f),
 	};
+
+	render::Viewport_t viewport(static_cast<float>(g_GameConfig.width), static_cast<float>(g_GameConfig.height));
 
 	render::RenderContext* pImmediateContext = g_pDevice->GetImmediateContext();
 	render::RenderTarget* pRenderTarget = g_pDevice->CreateRenderTarget(g_pSwapChain->GetBackBuffer());
 
-	render::Buffer* pVB = g_pDevice->CreateVertexBuffer(_countof(vertices), sizeof(Vertex), render::BufferUsage::Default, vertices);
+	render::Buffer* pVB = g_pDevice->CreateVertexBuffer(_countof(vertices), sizeof(Vertex_t), render::BufferUsage::Default, vertices);
 
 	bool exitGame = false;
 
@@ -128,6 +130,9 @@ int EntryPoint() {
 		}
 
 		pImmediateContext->ClearRenderTarget(pRenderTarget, { 1.f, 0.f, 0.f, 1.f });
+
+		pImmediateContext->SetViewports(&viewport, 1);
+		pImmediateContext->SetPrimtiveTopology(render::PrimitiveToplogy::TriangleList);
 
 		pImmediateContext->SetVertexBuffer(pVB);
 		pImmediateContext->Draw(_countof(vertices), 0);

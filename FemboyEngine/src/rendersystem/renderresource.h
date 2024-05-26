@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace fe::render {
 
@@ -53,37 +54,47 @@ struct BindFlags {
 	};
 };
 
-struct BufferDesc {
-	const void* pInitData;
-	uint32_t sizeInBytes;
-	BufferUsage::Enum usage;
-	uint32_t bindFlags;
-	uint32_t cpuAccessFlags;
-};
-
-struct TextureDesc {
-	const void* pInitData;
-	uint32_t width;
-	uint32_t height;
-	uint32_t depth;
+struct InputElement_t {
+	std::string semanticName;
+	uint32_t semanticIndex;
 	RenderFormat::Enum format;
-	uint32_t mipLevels;
-	uint32_t bindFlags;
+	uint32_t byteOffset;
 };
 
-class Texture2D {
+class RenderResource {
+public:
+	virtual ~RenderResource() = default;
+	virtual uint32_t Release() = 0;
+};
+
+class Texture2D : public RenderResource {
 public:
 	virtual ~Texture2D() = default;
 };
 
-class RenderTarget {
+class RenderTarget : public RenderResource {
 public:
 	virtual ~RenderTarget() = default;
 };
 
-class Buffer {
+class Buffer : public RenderResource {
 public:
 	virtual ~Buffer() = default;
+};
+
+class VertexShader : public RenderResource {
+public:
+	virtual ~VertexShader() = default;
+};
+
+class PixelShader : public RenderResource {
+public:
+	virtual ~PixelShader() = default;
+};
+
+class InputLayout : public RenderResource {
+public:
+	virtual ~InputLayout() = default;
 };
 
 }

@@ -22,18 +22,18 @@
     <ClInclude Include="src\fstdlib\pointers.h" />
     <ClInclude Include="src\rendersystem\dx11\dx11.h" />
     <ClInclude Include="src\rendersystem\dx11\renderdevicedx11.h" />
-    <ClInclude Include="src\rendersystem\dx11\swapchaindx11.h" />
     <ClInclude Include="src\rendersystem\graphicsapi.h" />
     <ClInclude Include="src\rendersystem\rendercontext.h" />
     <ClInclude Include="src\rendersystem\renderdevice.h" />
     <ClInclude Include="src\rendersystem\renderresource.h" />
     <ClInclude Include="src\rendersystem\rhi.h" />
+    <ClInclude Include="src\rendersystem\shadercompiler.h" />
     <ClInclude Include="src\rendersystem\swapchain.h" />
+    <ClInclude Include="src\rendersystem\viewport.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\core\main.cpp" />
     <ClCompile Include="src\rendersystem\dx11\renderdevicedx11.cpp" />
-    <ClCompile Include="src\rendersystem\dx11\swapchaindx11.cpp" />
     <ClCompile Include="src\rendersystem\rhi.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

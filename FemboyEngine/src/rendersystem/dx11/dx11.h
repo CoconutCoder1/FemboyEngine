@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d11.h>
+#include <dxgi1_4.h>
 #include <wrl/client.h>
 
 #include <cstdio>

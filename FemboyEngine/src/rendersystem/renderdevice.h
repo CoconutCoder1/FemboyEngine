@@ -15,10 +15,15 @@ public:
 	virtual ~RenderDevice() = default;
 
 	virtual bool Initialize(const RenderDeviceParams_t& params) = 0;
+	virtual void ReleaseResource(RenderResource* pResource) = 0;
 
 	virtual RenderContext* GetImmediateContext() const = 0;
 	virtual RenderContext* CreateDeferredContext() = 0;
 	virtual SwapChain* CreateSwapChain(const SwapChainParams_t& params) = 0;
+
+	virtual VertexShader* CreateVertexShader(const void* pBytecode, size_t bytecodeLength) = 0;
+	virtual PixelShader* CreatePixelShader(const void* pBytecode, size_t bytecodeLength) = 0;
+	virtual InputLayout* CreateInputLayout(InputElement_t const* const pElements, uint32_t numElements, const void* pShaderBytecode, size_t bytecodeLength) = 0;
 
 	virtual Buffer* CreateVertexBuffer(uint32_t numVertices, uint32_t strideInBytes, BufferUsage::Enum usage, const void* pInitData) = 0;
 

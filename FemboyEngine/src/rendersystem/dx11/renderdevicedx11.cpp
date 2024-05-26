@@ -6,6 +6,7 @@
 #include <array>
 
 #pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
 
 namespace fe::render {
 
@@ -126,6 +127,10 @@ public:
 
 	virtual ~Texture2D_Dx11() = default;
 
+	virtual uint32_t Release() {
+		return static_cast<uint32_t>(m_pTexture->Release());
+	}
+
 	wrl::ComPtr<ID3D11Texture2D> m_pTexture;
 };
 
@@ -135,6 +140,10 @@ public:
 		: m_pRTV(pRTV) {}
 
 	virtual ~RenderTarget_Dx11() = default;
+
+	virtual uint32_t Release() {
+		return static_cast<uint32_t>(m_pRTV->Release());
+	}
 
 	wrl::ComPtr<ID3D11RenderTargetView> m_pRTV;
 };
@@ -149,8 +158,54 @@ public:
 
 	virtual ~Buffer_Dx11() = default;
 
+	virtual uint32_t Release() {
+		return static_cast<uint32_t>(m_pBuffer->Release());
+	}
+
 	wrl::ComPtr<ID3D11Buffer> m_pBuffer;
 	D3D11_BUFFER_DESC m_Desc;
+};
+
+class VertexShader_Dx11 : public VertexShader {
+public:
+	VertexShader_Dx11(wrl::ComPtr<ID3D11VertexShader> pShader)
+		: m_pShader(pShader) {}
+
+	virtual ~VertexShader_Dx11() = default;
+
+	virtual uint32_t Release() {
+		return static_cast<uint32_t>(m_pShader->Release());
+	}
+
+	wrl::ComPtr<ID3D11VertexShader> m_pShader;
+};
+
+class PixelShader_Dx11 : public PixelShader {
+public:
+	PixelShader_Dx11(wrl::ComPtr<ID3D11PixelShader> pShader)
+		: m_pShader(pShader) {}
+
+	virtual ~PixelShader_Dx11() = default;
+
+	virtual uint32_t Release() {
+		return static_cast<uint32_t>(m_pShader->Release());
+	}
+
+	wrl::ComPtr<ID3D11PixelShader> m_pShader;
+};
+
+class InputLayout_Dx11 : public InputLayout {
+public:
+	InputLayout_Dx11(wrl::ComPtr<ID3D11InputLayout> pLayout)
+		: m_pLayout(pLayout) {}
+
+	virtual ~InputLayout_Dx11() = default;
+
+	virtual uint32_t Release() {
+		return static_cast<uint32_t>(m_pLayout->Release());
+	}
+
+	wrl::ComPtr<ID3D11InputLayout> m_pLayout;
 };
 
 // ===============================================
@@ -178,6 +233,12 @@ bool RenderDeviceDx11::Initialize(const RenderDeviceParams_t& params) {
 	return true;
 }
 
+void RenderDeviceDx11::ReleaseResource(RenderResource* pResource) {
+	if (pResource->Release() == 0) {
+		delete pResource;
+	}
+}
+
 RenderContext* RenderDeviceDx11::GetImmediateContext() const {
 	return m_pImmediateContext.get();
 }
@@ -195,6 +256,46 @@ SwapChain* RenderDeviceDx11::CreateSwapChain(const SwapChainParams_t& params) {
 	}
 
 	return pResult;
+}
+
+VertexShader* RenderDeviceDx11::CreateVertexShader(const void* pBytecode, size_t bytecodeLength) {
+	wrl::ComPtr<ID3D11VertexShader> pShader;
+
+	ThrowIfFailed(m_pDevice->CreateVertexShader(pBytecode, bytecodeLength, nullptr, &pShader));
+
+	return new VertexShader_Dx11(pShader);
+}
+
+PixelShader* RenderDeviceDx11::CreatePixelShader(const void* pBytecode, size_t bytecodeLength) {
+	wrl::ComPtr<ID3D11PixelShader> pShader;
+
+	ThrowIfFailed(m_pDevice->CreatePixelShader(pBytecode, bytecodeLength, nullptr, &pShader));
+
+	return new PixelShader_Dx11(pShader);
+}
+
+InputLayout* RenderDeviceDx11::CreateInputLayout(InputElement_t const* const pElements, uint32_t numElements, const void* pShaderBytecode, size_t bytecodeLength) {
+	std::vector<D3D11_INPUT_ELEMENT_DESC> inputElements(numElements);
+
+	for (uint32_t i = 0; i < numElements; i++) {
+		const InputElement_t& elem = pElements[i];
+
+		inputElements[i] = {
+			elem.semanticName.c_str(),
+			elem.semanticIndex,
+			ConvertRenderFormat(elem.format),
+			0,
+			elem.byteOffset,
+			D3D11_INPUT_PER_VERTEX_DATA,
+			0
+		};
+	}
+
+	wrl::ComPtr<ID3D11InputLayout> pLayout;
+
+	ThrowIfFailed(m_pDevice->CreateInputLayout(inputElements.data(), numElements, pShaderBytecode, bytecodeLength, &pLayout));
+
+	return new InputLayout_Dx11(pLayout);
 }
 
 Buffer* RenderDeviceDx11::CreateVertexBuffer(uint32_t numVertices, uint32_t strideInBytes, BufferUsage::Enum usage, const void* pInitData) {
@@ -274,10 +375,6 @@ bool SwapChainDx11::Initialize(RenderDevice* pDevice, const SwapChainParams_t& p
 
 void SwapChainDx11::Present() {
 	m_pSwapChain->Present(m_SyncInterval, NULL);
-
-	uint32_t test = m_pSwapChain->GetCurrentBackBufferIndex();
-
-	int brk = 0;
 }
 
 uint32_t SwapChainDx11::GetSyncInterval() const {
@@ -301,6 +398,22 @@ uint32_t SwapChainDx11::GetNumBackBuffers() const {
 // ===============================================
 RenderContextDx11::RenderContextDx11(wrl::ComPtr<ID3D11DeviceContext> pContext)
 	: m_pContext(pContext) {}
+
+void RenderContextDx11::SetViewports(const Viewport_t* const ppViewports, uint32_t numViewports) {
+	std::array<D3D11_VIEWPORT, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
+
+	for (uint32_t i = 0; i < numViewports; i++) {
+		const Viewport_t& vp = ppViewports[i];
+
+		viewports[i] = {
+			vp.x, vp.y,
+			vp.width, vp.height,
+			vp.minDepth, vp.maxDepth
+		};
+	}
+
+	m_pContext->RSSetViewports(numViewports, viewports.data());
+}
 
 void RenderContextDx11::ClearRenderTarget(const RenderTarget* pRenderTarget, const std::array<float, 4>& clearColor) {
 	const RenderTarget_Dx11* pRenderTargetDx11 = reinterpret_cast<const RenderTarget_Dx11*>(pRenderTarget);
