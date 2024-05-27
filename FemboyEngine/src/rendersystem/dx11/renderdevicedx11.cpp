@@ -228,18 +228,7 @@ RenderDeviceDx11::RenderDeviceDx11() {
 }
 
 RenderDeviceDx11::~RenderDeviceDx11() {
-	m_pSwapChainList.clear();
-	m_pImmediateContext.reset();
 
-	m_pDeviceContext.Reset();
-
-	RenderResourceIterator_t* pResourceIter = m_RenderResourceList.pHead;
-	while (pResourceIter) {
-		while (ReleaseResourceEx(pResourceIter->pResource, false) > 0);
-		pResourceIter = pResourceIter->pNext;
-	}
-
-	m_pDevice.Reset();
 }
 
 bool RenderDeviceDx11::Initialize(const RenderDeviceParams_t& params) {
@@ -263,6 +252,22 @@ bool RenderDeviceDx11::Initialize(const RenderDeviceParams_t& params) {
 	}
 
 	return true;
+}
+
+void RenderDeviceDx11::Shutdown() {
+	m_pSwapChainList.clear();
+	m_pImmediateContext.reset();
+
+	m_pDeviceContext.Reset();
+
+	RenderResourceIterator_t* pResourceIter = m_RenderResourceList.pHead;
+	while (pResourceIter) {
+		while (ReleaseResourceEx(pResourceIter->pResource, false) > 0);
+		pResourceIter = pResourceIter->pNext;
+	}
+	m_RenderResourceList.Clear();
+
+	m_pDevice.Reset();
 }
 
 uint32_t RenderDeviceDx11::ReleaseResource(RenderResource* pResource) {

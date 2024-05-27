@@ -36,11 +36,13 @@ void RHI::RemoveRenderDevice(RenderDevice* pDevice) {
 
 	SDL_assert(devicePos != m_pRenderDeviceList.end() && "Could not find device for removal");
 
-	m_pRenderDeviceList.erase(devicePos);
+	pDevice->Shutdown();
 
 	if (pDevice->IsDebuggingEnabled()) {
-		RenderDeviceDx11::ReportLiveObjectsD3D11();
+		pDevice->ReportLiveObjects();
 	}
+
+	m_pRenderDeviceList.erase(devicePos);
 }
 
 }

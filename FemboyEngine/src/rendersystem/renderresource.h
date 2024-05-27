@@ -99,6 +99,10 @@ struct RenderResourceList_t {
 	}
 
 	~RenderResourceList_t() {
+		
+	}
+
+	void Clear() {
 		while (pHead) {
 			RenderResourceIterator_t* pNextIter = pHead->pNext;
 
@@ -107,6 +111,7 @@ struct RenderResourceList_t {
 		}
 
 		pTail = nullptr;
+		pHead = nullptr;
 	}
 
 	void AddToHead(RenderResource* pResource) {

@@ -61,6 +61,7 @@ public:
 	virtual ~RenderDeviceDx11();
 
 	virtual bool Initialize(const RenderDeviceParams_t& params);
+	virtual void Shutdown();
 	virtual uint32_t ReleaseResource(RenderResource* pResource);
 	virtual void ReportLiveObjects();
 

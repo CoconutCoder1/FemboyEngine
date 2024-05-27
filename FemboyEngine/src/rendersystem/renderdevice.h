@@ -18,6 +18,7 @@ public:
 	virtual ~RenderDevice() = default;
 
 	virtual bool Initialize(const RenderDeviceParams_t& params) = 0;
+	virtual void Shutdown() = 0;
 	virtual uint32_t ReleaseResource(RenderResource* pResource) = 0;
 	virtual void ReportLiveObjects() = 0;
 
