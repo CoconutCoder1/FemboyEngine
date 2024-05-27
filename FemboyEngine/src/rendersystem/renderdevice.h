@@ -16,7 +16,8 @@ public:
 	virtual ~RenderDevice() = default;
 
 	virtual bool Initialize(const RenderDeviceParams_t& params) = 0;
-	virtual void ReleaseResource(RenderResource* pResource) = 0;
+	virtual uint32_t ReleaseResource(RenderResource* pResource) = 0;
+	virtual void ReportLiveObjects() = 0;
 
 	virtual RenderContext* GetImmediateContext() const = 0;
 	virtual RenderContext* CreateDeferredContext() = 0;
@@ -33,6 +34,21 @@ public:
 	virtual RenderTarget* CreateRenderTarget(Texture2D* pTexture) = 0;
 
 	virtual ShaderCompiler* GetShaderCompiler() const = 0;
+
+	inline void SetDeviceParams(const RenderDeviceParams_t& params) {
+		m_DeviceParams = params;
+	}
+
+	inline const RenderDeviceParams_t& GetDeviceParams() const {
+		return m_DeviceParams;
+	}
+
+	inline bool IsDebuggingEnabled() const {
+		return m_DeviceParams.enableDebugging;
+	}
+
+protected:
+	RenderDeviceParams_t m_DeviceParams;
 };
 
 }

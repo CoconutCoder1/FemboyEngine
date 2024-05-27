@@ -2,6 +2,8 @@
 
 #include "dx11/renderdevicedx11.h"
 
+#include <SDL3/SDL_assert.h>
+
 namespace fe::render {
 
 RHI::RHI(GraphicsAPI::Enum graphicsApi) {
@@ -22,7 +24,23 @@ RenderDevice* RHI::CreateRenderDevice(const RenderDeviceParams_t& params) {
 		return nullptr;
 	}
 
+	pDevice->SetDeviceParams(params);
+
 	return pDevice;
+}
+
+void RHI::RemoveRenderDevice(RenderDevice* pDevice) {
+	auto devicePos = std::find_if(m_pRenderDeviceList.begin(), m_pRenderDeviceList.end(), [pDevice](ScopedPtr<RenderDevice>& pRenderDevice) {
+		return pRenderDevice.get() == pDevice;
+		});
+
+	SDL_assert(devicePos != m_pRenderDeviceList.end() && "Could not find device for removal");
+
+	m_pRenderDeviceList.erase(devicePos);
+
+	if (pDevice->IsDebuggingEnabled()) {
+		RenderDeviceDx11::ReportLiveObjectsD3D11();
+	}
 }
 
 }

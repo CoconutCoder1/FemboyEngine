@@ -8,6 +8,7 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "d3dcompiler.lib")
+#pragma comment(lib, "dxguid.lib")
 
 namespace fe::render {
 
@@ -125,10 +126,23 @@ static void CreateBuffer(ID3D11Device* pDevice, D3D11_BUFFER_DESC* pDescOut, ID3
 	}
 }
 
+static uint32_t GetRefCount(IUnknown* pUnknown) {
+	pUnknown->AddRef();
+	return pUnknown->Release();
+}
 
 // ===============================================
 // DirectX 11 render resources implementation
 // ===============================================
+#define ReleaseDx11_ResourceImpl(_resourcePtr) \
+virtual uint32_t Release() { \
+uint32_t refCount = static_cast<uint32_t>(_resourcePtr->Release()); \
+if (refCount == 0) { \
+	_resourcePtr.Detach(); \
+} \
+return refCount; \
+}
+
 class Texture2D_Dx11 : public Texture2D {
 public:
 	Texture2D_Dx11(wrl::ComPtr<ID3D11Texture2D> texturePtr)
@@ -136,9 +150,7 @@ public:
 
 	virtual ~Texture2D_Dx11() = default;
 
-	virtual uint32_t Release() {
-		return static_cast<uint32_t>(m_pTexture->Release());
-	}
+	ReleaseDx11_ResourceImpl(m_pTexture);
 
 	wrl::ComPtr<ID3D11Texture2D> m_pTexture;
 };
@@ -150,9 +162,7 @@ public:
 
 	virtual ~RenderTarget_Dx11() = default;
 
-	virtual uint32_t Release() {
-		return static_cast<uint32_t>(m_pRTV->Release());
-	}
+	ReleaseDx11_ResourceImpl(m_pRTV);
 
 	wrl::ComPtr<ID3D11RenderTargetView> m_pRTV;
 };
@@ -166,9 +176,7 @@ public:
 
 	virtual ~Buffer_Dx11() = default;
 
-	virtual uint32_t Release() {
-		return static_cast<uint32_t>(m_pBuffer->Release());
-	}
+	ReleaseDx11_ResourceImpl(m_pBuffer);
 
 	wrl::ComPtr<ID3D11Buffer> m_pBuffer;
 	D3D11_BUFFER_DESC m_Desc;
@@ -181,9 +189,7 @@ public:
 
 	virtual ~VertexShader_Dx11() = default;
 
-	virtual uint32_t Release() {
-		return static_cast<uint32_t>(m_pShader->Release());
-	}
+	ReleaseDx11_ResourceImpl(m_pShader);
 
 	wrl::ComPtr<ID3D11VertexShader> m_pShader;
 };
@@ -195,9 +201,7 @@ public:
 
 	virtual ~PixelShader_Dx11() = default;
 
-	virtual uint32_t Release() {
-		return static_cast<uint32_t>(m_pShader->Release());
-	}
+	ReleaseDx11_ResourceImpl(m_pShader);
 
 	wrl::ComPtr<ID3D11PixelShader> m_pShader;
 };
@@ -209,9 +213,7 @@ public:
 
 	virtual ~InputLayout_Dx11() = default;
 
-	virtual uint32_t Release() {
-		return static_cast<uint32_t>(m_pLayout->Release());
-	}
+	ReleaseDx11_ResourceImpl(m_pLayout);
 
 	wrl::ComPtr<ID3D11InputLayout> m_pLayout;
 };
@@ -219,13 +221,31 @@ public:
 // ===============================================
 // DirectX 11 render device implementation
 // ===============================================
-RenderDeviceDx11::~RenderDeviceDx11() {
+static wrl::ComPtr<IDXGIDebug1> pDebugInterface;
 
+RenderDeviceDx11::~RenderDeviceDx11() {
+	m_pSwapChainList.clear();
+	m_pImmediateContext.reset();
+
+	m_pDeviceContext.Reset();
+
+	for (const auto& pResource : m_pRenderResourceList) {
+		while (true) {
+			uint32_t refCount = ReleaseResource(pResource, false);
+
+			if (refCount <= 0) {
+				break;
+			}
+		}
+	}
+	m_pRenderResourceList.clear();
+
+	m_pDevice.Reset();
 }
 
 bool RenderDeviceDx11::Initialize(const RenderDeviceParams_t& params) {
 	UINT createFlags = 0;
-
+	
 	if (params.enableDebugging)
 		createFlags |= D3D11_CREATE_DEVICE_DEBUG;
 
@@ -239,12 +259,24 @@ bool RenderDeviceDx11::Initialize(const RenderDeviceParams_t& params) {
 	m_pShaderCompiler = ScopedPtr<ShaderCompiler>(new ShaderCompilerDx11());
 	m_pImmediateContext = ScopedPtr<RenderContextDx11>(new RenderContextDx11(m_pDeviceContext));
 
+	if (params.enableDebugging && !pDebugInterface) {
+		ThrowIfFailed(DXGIGetDebugInterface1(0, __uuidof(IDXGIDebug1), reinterpret_cast<void**>(pDebugInterface.GetAddressOf())));
+	}
+
 	return true;
 }
 
-void RenderDeviceDx11::ReleaseResource(RenderResource* pResource) {
-	if (pResource->Release() == 0) {
-		delete pResource;
+uint32_t RenderDeviceDx11::ReleaseResource(RenderResource* pResource) {
+	return ReleaseResource(pResource, true);
+}
+
+void RenderDeviceDx11::ReportLiveObjects() {
+	ReportLiveObjectsD3D11();
+}
+
+void RenderDeviceDx11::ReportLiveObjectsD3D11() {
+	if (pDebugInterface) {
+		pDebugInterface->ReportLiveObjects(DXGI_DEBUG_D3D11, DXGI_DEBUG_RLO_ALL);
 	}
 }
 
@@ -272,7 +304,7 @@ VertexShader* RenderDeviceDx11::CreateVertexShader(const void* pBytecode, size_t
 
 	ThrowIfFailed(m_pDevice->CreateVertexShader(pBytecode, bytecodeLength, nullptr, &pShader));
 
-	return new VertexShader_Dx11(pShader);
+	return RegisterResource(new VertexShader_Dx11(pShader));
 }
 
 PixelShader* RenderDeviceDx11::CreatePixelShader(const void* pBytecode, size_t bytecodeLength) {
@@ -280,7 +312,7 @@ PixelShader* RenderDeviceDx11::CreatePixelShader(const void* pBytecode, size_t b
 
 	ThrowIfFailed(m_pDevice->CreatePixelShader(pBytecode, bytecodeLength, nullptr, &pShader));
 
-	return new PixelShader_Dx11(pShader);
+	return RegisterResource(new PixelShader_Dx11(pShader));
 }
 
 InputLayout* RenderDeviceDx11::CreateInputLayout(InputElement_t const* const pElements, uint32_t numElements, const void* pShaderBytecode, size_t bytecodeLength) {
@@ -304,7 +336,7 @@ InputLayout* RenderDeviceDx11::CreateInputLayout(InputElement_t const* const pEl
 
 	ThrowIfFailed(m_pDevice->CreateInputLayout(inputElements.data(), numElements, pShaderBytecode, bytecodeLength, &pLayout));
 
-	return new InputLayout_Dx11(pLayout);
+	return RegisterResource(new InputLayout_Dx11(pLayout));
 }
 
 Buffer* RenderDeviceDx11::CreateVertexBuffer(uint32_t numVertices, uint32_t strideInBytes, BufferUsage::Enum usage, const void* pInitData) {
@@ -312,7 +344,7 @@ Buffer* RenderDeviceDx11::CreateVertexBuffer(uint32_t numVertices, uint32_t stri
 	D3D11_BUFFER_DESC bufferDesc;
 	CreateBuffer(m_pDevice.Get(), &bufferDesc, &pBuffer, numVertices * strideInBytes, strideInBytes, D3D11_BIND_VERTEX_BUFFER, usage, pInitData);
 
-	return new Buffer_Dx11(pBuffer, bufferDesc);
+	return RegisterResource(new Buffer_Dx11(pBuffer, bufferDesc));
 }
 
 Texture2D* RenderDeviceDx11::CreateTexture2D(uint32_t width, uint32_t height, RenderFormat::Enum format, const void* pInitData, uint32_t arraySize) {
@@ -329,7 +361,7 @@ Texture2D* RenderDeviceDx11::CreateTexture2D(uint32_t width, uint32_t height, Re
 	wrl::ComPtr<ID3D11Texture2D> texturePtr;
 	ThrowIfFailed(m_pDevice->CreateTexture2D(&td, nullptr, &texturePtr));
 
-	return new Texture2D_Dx11(texturePtr);
+	return RegisterResource(new Texture2D_Dx11(texturePtr));
 }
 
 RenderTarget* RenderDeviceDx11::CreateRenderTarget(Texture2D* pTexture) {
@@ -338,7 +370,7 @@ RenderTarget* RenderDeviceDx11::CreateRenderTarget(Texture2D* pTexture) {
 	wrl::ComPtr<ID3D11RenderTargetView> pRTV;
 	ThrowIfFailed(m_pDevice->CreateRenderTargetView(pTextureDx11->m_pTexture.Get(), nullptr, &pRTV));
 
-	return new RenderTarget_Dx11(pRTV);
+	return RegisterResource(new RenderTarget_Dx11(pRTV));
 }
 
 ShaderCompiler* RenderDeviceDx11::GetShaderCompiler() const {
@@ -349,13 +381,42 @@ ID3D11Device* RenderDeviceDx11::D3D11Device() const {
 	return m_pDevice.Get();
 }
 
+uint32_t RenderDeviceDx11::ReleaseResource(RenderResource* pResource, bool unregisterNullRef) {
+	uint32_t newRefCount = pResource->Release();
+	if (newRefCount == 0) {
+		if (unregisterNullRef)
+			UnregisterResource(pResource);
+		delete pResource;
+	}
+	return newRefCount;
+}
+
+RenderResource* RenderDeviceDx11::RegisterResource(RenderResource* pResource) {
+	m_pRenderResourceList.push_back(pResource);
+
+	return pResource;
+}
+
+void RenderDeviceDx11::UnregisterResource(RenderResource* pResource) {
+	auto resourcePos = std::find(m_pRenderResourceList.begin(), m_pRenderResourceList.end(), pResource);
+
+	if (resourcePos != m_pRenderResourceList.end()) {
+		m_pRenderResourceList.erase(resourcePos);
+	}
+}
+
 // ===============================================
 // DirectX 11 swap chain implementation
 // ===============================================
+SwapChainDx11::~SwapChainDx11() {
+	ReleaseBackBufferResource();
+}
+
 bool SwapChainDx11::Initialize(RenderDevice* pDevice, const SwapChainParams_t& params) {
 	RenderDeviceDx11* pDeviceDx11 = static_cast<RenderDeviceDx11*>(pDevice);
 
 	m_SwapChainParams = params;
+	m_pDevice = pDeviceDx11;
 
 	ThrowIfFailed(CreateDXGIFactory1(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(m_pFactory.GetAddressOf())));
 
@@ -363,7 +424,7 @@ bool SwapChainDx11::Initialize(RenderDevice* pDevice, const SwapChainParams_t& p
 	scd.BufferCount = params.bufferCount;
 	scd.SampleDesc.Count = 1;
 	scd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	scd.Windowed = TRUE;
+	scd.Windowed = (!params.isFullscreen);
 	scd.OutputWindow = reinterpret_cast<HWND>(params.pOutputWindow);
 	scd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 
@@ -379,12 +440,17 @@ bool SwapChainDx11::Initialize(RenderDevice* pDevice, const SwapChainParams_t& p
 
 	ThrowIfFailed(pSwapChain.As(&m_pSwapChain));
 
-	wrl::ComPtr<ID3D11Texture2D> texturePtr;
-	ThrowIfFailed(m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(texturePtr.GetAddressOf())));
-
-	m_pBackBufferList = ScopedPtr<Texture2D>(new Texture2D_Dx11(texturePtr));
+	CreateBackBufferResource();
 
 	return true;
+}
+
+void SwapChainDx11::ResizeBuffers() {
+	ReleaseBackBufferResource();
+
+	m_pSwapChain->ResizeBuffers(m_SwapChainParams.bufferCount, 0, 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
+
+	CreateBackBufferResource();
 }
 
 void SwapChainDx11::Present() {
@@ -400,11 +466,31 @@ void SwapChainDx11::SetSyncInterval(uint32_t syncInterval) {
 }
 
 Texture2D* SwapChainDx11::GetBackBuffer() {
-	return m_pBackBufferList.get();
+	return m_pBackBuffer.get();
+}
+
+RenderTarget* SwapChainDx11::GetBackBufferTarget() {
+	return m_pRenderTarget;
 }
 
 uint32_t SwapChainDx11::GetNumBackBuffers() const {
 	return m_SwapChainParams.bufferCount;
+}
+
+void SwapChainDx11::CreateBackBufferResource() {
+	wrl::ComPtr<ID3D11Texture2D> texturePtr;
+	ThrowIfFailed(m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(texturePtr.GetAddressOf())));
+
+	m_pBackBuffer = ScopedPtr<Texture2D>(new Texture2D_Dx11(texturePtr));
+	m_pRenderTarget = m_pDevice->CreateRenderTarget(m_pBackBuffer.get());
+}
+
+void SwapChainDx11::ReleaseBackBufferResource() {
+	if (m_pRenderTarget) {
+		SDL_assert(m_pDevice->ReleaseResource(m_pRenderTarget) == 0);
+		m_pBackBuffer = nullptr;
+		m_pRenderTarget = nullptr;
+	}
 }
 
 // ===============================================

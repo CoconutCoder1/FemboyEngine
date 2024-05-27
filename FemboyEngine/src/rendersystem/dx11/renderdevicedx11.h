@@ -8,6 +8,7 @@
 #include "dx11.h"
 
 #include <vector>
+#include <list>
 #include <array>
 
 namespace fe::render {
@@ -23,24 +24,33 @@ public:
 
 class SwapChainDx11 : public SwapChain {
 public:
-	virtual ~SwapChainDx11() = default;
+	virtual ~SwapChainDx11();
 
 	virtual bool Initialize(RenderDevice* pDevice, const SwapChainParams_t& params);
 
+	virtual void ResizeBuffers();
 	virtual void Present();
 
 	virtual uint32_t GetSyncInterval() const;
 	virtual void SetSyncInterval(uint32_t syncInterval);
 
 	virtual Texture2D* GetBackBuffer();
+	virtual RenderTarget* GetBackBufferTarget();
 	virtual uint32_t GetNumBackBuffers() const;
 
 private:
+	void ReleaseBackBufferResource();
+	void CreateBackBufferResource();
+
+private:
+	class RenderDeviceDx11* m_pDevice;
+
 	wrl::ComPtr<IDXGIFactory1> m_pFactory;
 	wrl::ComPtr<IDXGISwapChain3> m_pSwapChain;
 	UINT m_SyncInterval = 1U;
 
-	ScopedPtr<Texture2D> m_pBackBufferList;
+	ScopedPtr<Texture2D> m_pBackBuffer;
+	RenderTarget* m_pRenderTarget;
 
 	SwapChainParams_t m_SwapChainParams;
 };
@@ -50,7 +60,8 @@ public:
 	virtual ~RenderDeviceDx11();
 
 	virtual bool Initialize(const RenderDeviceParams_t& params);
-	virtual void ReleaseResource(RenderResource* pResource);
+	virtual uint32_t ReleaseResource(RenderResource* pResource);
+	virtual void ReportLiveObjects();
 
 	virtual RenderContext* GetImmediateContext() const;
 	virtual RenderContext* CreateDeferredContext();
@@ -69,6 +80,17 @@ public:
 	virtual ShaderCompiler* GetShaderCompiler() const;
 
 	ID3D11Device* D3D11Device() const;
+	static void ReportLiveObjectsD3D11();
+
+	uint32_t ReleaseResource(RenderResource* pResource, bool unregisterNullRef);
+	RenderResource* RegisterResource(RenderResource* pResource);
+	void UnregisterResource(RenderResource* pResource);
+
+	template<typename T>
+	T* RegisterResource(T* pResource) {
+		static_assert(std::is_base_of_v<RenderResource, T>);
+		return static_cast<T*>(RegisterResource(static_cast<RenderResource*>(pResource)));
+	}
 
 private:
 	wrl::ComPtr<ID3D11Device> m_pDevice;
@@ -78,6 +100,8 @@ private:
 	std::vector<ScopedPtr<SwapChainDx11>> m_pSwapChainList;
 
 	ScopedPtr<ShaderCompiler> m_pShaderCompiler;
+
+	std::list<RenderResource*> m_pRenderResourceList;
 };
 
 class RenderContextDx11 : public RenderContext {

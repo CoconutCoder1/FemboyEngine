@@ -2,6 +2,7 @@
 
 #include <d3d11.h>
 #include <dxgi1_4.h>
+#include <dxgidebug.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 

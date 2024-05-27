@@ -58,6 +58,8 @@ static bool CreateGameWindow() {
 	if (g_GameConfig.isBorderless) {
 		windowFlags |= SDL_WINDOW_BORDERLESS;
 	}
+	
+	windowFlags |= SDL_WINDOW_RESIZABLE;
 
 	g_pGameWindow = SDL_CreateWindow("FemboyEngine", g_GameConfig.width, g_GameConfig.height, windowFlags);
 
@@ -99,7 +101,7 @@ int EntryPoint() {
 		printf("Creating game window failed.\n");
 		return -1;
 	}
-
+	
 	ScopedPtr<render::RHI> pRHI = ScopedPtr<render::RHI>(new render::RHI(render::GraphicsAPI::DirectX11));
 
 	render::RenderDeviceParams_t deviceParams;
@@ -116,6 +118,7 @@ int EntryPoint() {
 	swapChainParams.pOutputWindow = GetSDLWindowHandle_Win32();
 	swapChainParams.width = 0;
 	swapChainParams.height = 0;
+	swapChainParams.isFullscreen = g_GameConfig.isFullscreen;
 
 	g_pSwapChain = g_pDevice->CreateSwapChain(swapChainParams);
 	
@@ -132,10 +135,7 @@ int EntryPoint() {
 		Vertex_t(0.5f, -0.5f, 0.f),
 	};
 
-	render::Viewport_t viewport(static_cast<float>(g_GameConfig.width), static_cast<float>(g_GameConfig.height));
-
 	render::RenderContext* pImmediateContext = g_pDevice->GetImmediateContext();
-	render::RenderTarget* pRenderTarget = g_pDevice->CreateRenderTarget(g_pSwapChain->GetBackBuffer());
 
 	render::Buffer* pVB = g_pDevice->CreateVertexBuffer(_countof(vertices), sizeof(Vertex_t), render::BufferUsage::Default, vertices);
 
@@ -160,7 +160,23 @@ int EntryPoint() {
 		while (SDL_PollEvent(&ev)) {
 			if (ev.type == SDL_EVENT_QUIT)
 				exitGame = true;
+
+			if (ev.type == SDL_EVENT_KEY_DOWN) {
+				if (ev.key.keysym.scancode == SDL_SCANCODE_F8) {
+					g_pDevice->ReportLiveObjects();
+				}
+			}
+
+			if (ev.type == SDL_EVENT_WINDOW_EXPOSED || ev.type == SDL_EVENT_WINDOW_RESIZED) {
+				g_pSwapChain->ResizeBuffers();
+
+				SDL_GetWindowSize(g_pGameWindow, &g_GameConfig.width, &g_GameConfig.height);
+			}
 		}
+
+		render::Viewport_t viewport(static_cast<float>(g_GameConfig.width), static_cast<float>(g_GameConfig.height));
+
+		render::RenderTarget* pRenderTarget = g_pSwapChain->GetBackBufferTarget();
 
 		pImmediateContext->ClearRenderTarget(pRenderTarget, { 1.f, 0.f, 0.f, 1.f });
 		pImmediateContext->SetRenderTargets(&pRenderTarget, 1);
@@ -177,6 +193,8 @@ int EntryPoint() {
 
 		g_pSwapChain->Present();
 	}
+	
+	pRHI->RemoveRenderDevice(g_pDevice);
 
 	return 0;
 }

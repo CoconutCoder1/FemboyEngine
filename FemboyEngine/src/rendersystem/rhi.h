@@ -14,6 +14,7 @@ public:
 	RHI(GraphicsAPI::Enum graphicsApi);
 
 	virtual RenderDevice* CreateRenderDevice(const RenderDeviceParams_t& params);
+	virtual void RemoveRenderDevice(RenderDevice* pDevice);
 
 private:
 	GraphicsAPI::Enum m_GraphicsApi;
