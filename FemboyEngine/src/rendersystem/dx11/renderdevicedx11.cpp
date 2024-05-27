@@ -223,22 +223,21 @@ public:
 // ===============================================
 static wrl::ComPtr<IDXGIDebug1> pDebugInterface;
 
+RenderDeviceDx11::RenderDeviceDx11() {
+
+}
+
 RenderDeviceDx11::~RenderDeviceDx11() {
 	m_pSwapChainList.clear();
 	m_pImmediateContext.reset();
 
 	m_pDeviceContext.Reset();
 
-	for (const auto& pResource : m_pRenderResourceList) {
-		while (true) {
-			uint32_t refCount = ReleaseResource(pResource, false);
-
-			if (refCount <= 0) {
-				break;
-			}
-		}
+	RenderResourceIterator_t* pResourceIter = m_RenderResourceList.pHead;
+	while (pResourceIter) {
+		while (ReleaseResourceEx(pResourceIter->pResource, false) > 0);
+		pResourceIter = pResourceIter->pNext;
 	}
-	m_pRenderResourceList.clear();
 
 	m_pDevice.Reset();
 }
@@ -267,7 +266,7 @@ bool RenderDeviceDx11::Initialize(const RenderDeviceParams_t& params) {
 }
 
 uint32_t RenderDeviceDx11::ReleaseResource(RenderResource* pResource) {
-	return ReleaseResource(pResource, true);
+	return ReleaseResourceEx(pResource, true);
 }
 
 void RenderDeviceDx11::ReportLiveObjects() {
@@ -379,30 +378,6 @@ ShaderCompiler* RenderDeviceDx11::GetShaderCompiler() const {
 
 ID3D11Device* RenderDeviceDx11::D3D11Device() const {
 	return m_pDevice.Get();
-}
-
-uint32_t RenderDeviceDx11::ReleaseResource(RenderResource* pResource, bool unregisterNullRef) {
-	uint32_t newRefCount = pResource->Release();
-	if (newRefCount == 0) {
-		if (unregisterNullRef)
-			UnregisterResource(pResource);
-		delete pResource;
-	}
-	return newRefCount;
-}
-
-RenderResource* RenderDeviceDx11::RegisterResource(RenderResource* pResource) {
-	m_pRenderResourceList.push_back(pResource);
-
-	return pResource;
-}
-
-void RenderDeviceDx11::UnregisterResource(RenderResource* pResource) {
-	auto resourcePos = std::find(m_pRenderResourceList.begin(), m_pRenderResourceList.end(), pResource);
-
-	if (resourcePos != m_pRenderResourceList.end()) {
-		m_pRenderResourceList.erase(resourcePos);
-	}
 }
 
 // ===============================================

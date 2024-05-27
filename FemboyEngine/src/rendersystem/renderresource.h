@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace fe::render {
 
@@ -71,10 +72,99 @@ struct InputElement_t {
 		: semanticName(semanticName), semanticIndex(semanticIndex), format(format), byteOffset(byteOffset) {}
 };
 
+struct RenderResourceIterator_t {
+	class RenderResource* pResource;
+	RenderResourceIterator_t* pPrevious;
+	RenderResourceIterator_t* pNext;
+};
+
 class RenderResource {
+	friend class RenderDevice;
+
 public:
 	virtual ~RenderResource() = default;
 	virtual uint32_t Release() = 0;
+
+private:
+	RenderResourceIterator_t* m_pIterator = nullptr;
+};
+
+struct RenderResourceList_t {
+	RenderResourceIterator_t* pHead;
+	RenderResourceIterator_t* pTail;
+
+	RenderResourceList_t() {
+		pHead = nullptr;
+		pTail = nullptr;
+	}
+
+	~RenderResourceList_t() {
+		while (pHead) {
+			RenderResourceIterator_t* pNextIter = pHead->pNext;
+
+			delete pHead;
+			pHead = pNextIter;
+		}
+
+		pTail = nullptr;
+	}
+
+	void AddToHead(RenderResource* pResource) {
+		RenderResourceIterator_t* pPreviousHead = pHead;
+
+		pHead = new RenderResourceIterator_t();
+		pHead->pResource = pResource;
+		pHead->pNext = nullptr;
+		pHead->pPrevious = nullptr;
+
+		if (!pTail) {
+			pTail = pHead;
+		}
+
+		if (pPreviousHead) {
+			pPreviousHead->pPrevious = pHead;
+			pHead->pNext = pPreviousHead;
+		}
+	}
+
+	void AddToTail(RenderResource* pResource) {
+		RenderResourceIterator_t* pPreviousTail = pTail;
+
+		pTail = new RenderResourceIterator_t();
+		pTail->pResource = pResource;
+		pTail->pNext = nullptr;
+		pTail->pPrevious = nullptr;
+
+		if (!pHead) {
+			pHead = pTail;
+		}
+
+		if (pPreviousTail) {
+			pPreviousTail->pNext = pTail;
+			pTail->pPrevious = pPreviousTail;
+		}
+	}
+
+	void Remove(RenderResourceIterator_t* pIterator) {
+		RenderResourceIterator_t* pNext = pIterator->pNext;
+		RenderResourceIterator_t* pPrevious = pIterator->pPrevious;
+
+		if (pNext) {
+			pNext->pPrevious = pPrevious;
+		}
+		if (pPrevious) {
+			pPrevious->pNext = pNext;
+		}
+
+		if (pIterator == pHead) {
+			pHead = pNext;
+		}
+		if (pIterator == pTail) {
+			pTail = pPrevious;
+		}
+
+		delete pIterator;
+	}
 };
 
 class Texture2D : public RenderResource {

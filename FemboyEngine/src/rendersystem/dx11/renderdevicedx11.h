@@ -57,6 +57,7 @@ private:
 
 class RenderDeviceDx11 : public RenderDevice {
 public:
+	RenderDeviceDx11();
 	virtual ~RenderDeviceDx11();
 
 	virtual bool Initialize(const RenderDeviceParams_t& params);
@@ -82,16 +83,6 @@ public:
 	ID3D11Device* D3D11Device() const;
 	static void ReportLiveObjectsD3D11();
 
-	uint32_t ReleaseResource(RenderResource* pResource, bool unregisterNullRef);
-	RenderResource* RegisterResource(RenderResource* pResource);
-	void UnregisterResource(RenderResource* pResource);
-
-	template<typename T>
-	T* RegisterResource(T* pResource) {
-		static_assert(std::is_base_of_v<RenderResource, T>);
-		return static_cast<T*>(RegisterResource(static_cast<RenderResource*>(pResource)));
-	}
-
 private:
 	wrl::ComPtr<ID3D11Device> m_pDevice;
 	wrl::ComPtr<ID3D11DeviceContext> m_pDeviceContext;
@@ -100,8 +91,6 @@ private:
 	std::vector<ScopedPtr<SwapChainDx11>> m_pSwapChainList;
 
 	ScopedPtr<ShaderCompiler> m_pShaderCompiler;
-
-	std::list<RenderResource*> m_pRenderResourceList;
 };
 
 class RenderContextDx11 : public RenderContext {

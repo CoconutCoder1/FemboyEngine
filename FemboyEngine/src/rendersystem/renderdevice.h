@@ -5,6 +5,8 @@
 #include "renderresource.h"
 #include "shadercompiler.h"
 
+#include <list>
+
 namespace fe::render {
 
 struct RenderDeviceParams_t {
@@ -47,8 +49,39 @@ public:
 		return m_DeviceParams.enableDebugging;
 	}
 
+	uint32_t ReleaseResourceEx(RenderResource* pResource, bool unregisterNullRef) {
+		uint32_t newRefCount = pResource->Release();
+		if (newRefCount == 0) {
+			if (unregisterNullRef)
+				UnregisterResource(pResource);
+			delete pResource;
+		}
+		return newRefCount;
+	}
+
+	RenderResource* RegisterResource(RenderResource* pResource) {
+		m_RenderResourceList.AddToTail(pResource);
+
+		pResource->m_pIterator = m_RenderResourceList.pTail;
+
+		return pResource;
+	}
+
+	void UnregisterResource(RenderResource* pResource) {
+		if (pResource->m_pIterator) {
+			m_RenderResourceList.Remove(pResource->m_pIterator);
+		}
+	}
+
+	template<typename T>
+	T* RegisterResource(T* pResource) {
+		static_assert(std::is_base_of_v<RenderResource, T>);
+		return static_cast<T*>(RegisterResource(static_cast<RenderResource*>(pResource)));
+	}
+
 protected:
 	RenderDeviceParams_t m_DeviceParams;
+	RenderResourceList_t m_RenderResourceList;
 };
 
 }
