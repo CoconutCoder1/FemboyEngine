@@ -343,6 +343,14 @@ InputLayout* RenderDeviceDx11::CreateInputLayout(InputElement_t const* const pEl
 	return RegisterResource(new InputLayout_Dx11(pLayout));
 }
 
+Buffer* RenderDeviceDx11::CreateConstantBuffer(uint32_t bufferSize, BufferUsage::Enum usage, const void* pInitData) {
+	wrl::ComPtr<ID3D11Buffer> pBuffer;
+	D3D11_BUFFER_DESC bufferDesc;
+	CreateBuffer(m_pDevice.Get(), &bufferDesc, &pBuffer, bufferSize, 4, D3D11_BIND_CONSTANT_BUFFER, usage, pInitData);
+
+	return RegisterResource(new Buffer_Dx11(pBuffer, bufferDesc));
+}
+
 Buffer* RenderDeviceDx11::CreateVertexBuffer(uint32_t numVertices, uint32_t strideInBytes, BufferUsage::Enum usage, const void* pInitData) {
 	wrl::ComPtr<ID3D11Buffer> pBuffer;
 	D3D11_BUFFER_DESC bufferDesc;
@@ -495,6 +503,21 @@ void RenderContextDx11::SetViewports(const Viewport_t* const ppViewports, uint32
 	m_pContext->RSSetViewports(numViewports, viewports.data());
 }
 
+void RenderContextDx11::Map(Buffer* pBuffer, void** ppData) {
+	Buffer_Dx11* pBufferDx11 = reinterpret_cast<Buffer_Dx11*>(pBuffer);
+
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	ThrowIfFailed(m_pContext->Map(pBufferDx11->m_pBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped));
+
+	*ppData = mapped.pData;
+}
+
+void RenderContextDx11::Unmap(Buffer* pBuffer) {
+	Buffer_Dx11* pBufferDx11 = reinterpret_cast<Buffer_Dx11*>(pBuffer);
+
+	m_pContext->Unmap(pBufferDx11->m_pBuffer.Get(), 0);
+}
+
 void RenderContextDx11::SetVertexShader(VertexShader* pVertexShader) {
 	VertexShader_Dx11* pVertexShaderDx11 = reinterpret_cast<VertexShader_Dx11*>(pVertexShader);
 
@@ -505,6 +528,31 @@ void RenderContextDx11::SetPixelShader(PixelShader* pVertexShader) {
 	PixelShader_Dx11* pPixelShaderDx11 = reinterpret_cast<PixelShader_Dx11*>(pVertexShader);
 
 	m_pContext->PSSetShader(pPixelShaderDx11->m_pShader.Get(), nullptr, 0);
+}
+
+void RenderContextDx11::SetConstantBuffers(ShaderStage::Enum shaderStage, Buffer const* const* ppBuffers, uint32_t numBuffers) {
+	std::array<ID3D11Buffer*, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> pConstantBuffers;
+
+	for (uint32_t i = 0; i < numBuffers; i++) {
+		const Buffer_Dx11* pBufferDx11 = reinterpret_cast<const Buffer_Dx11*>(ppBuffers[i]);
+
+		pConstantBuffers[i] = pBufferDx11->m_pBuffer.Get();
+	}
+
+	switch (shaderStage)
+	{
+	case ShaderStage::Vertex:
+		m_pContext->VSSetConstantBuffers(0, numBuffers, pConstantBuffers.data());
+		break;
+
+	case ShaderStage::Pixel:
+		m_pContext->PSSetConstantBuffers(0, numBuffers, pConstantBuffers.data());
+		break;
+
+	default:
+		SDL_assert(!"Tried to bind constant buffer to unknown shader stage");
+		break;
+	}
 }
 
 void RenderContextDx11::ClearRenderTarget(const RenderTarget* pRenderTarget, const std::array<float, 4>& clearColor) {

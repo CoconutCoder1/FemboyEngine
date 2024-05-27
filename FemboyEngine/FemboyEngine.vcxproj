@@ -29,6 +29,7 @@
     <ClInclude Include="src\rendersystem\rhi.h" />
     <ClInclude Include="src\rendersystem\shadercompiler.h" />
     <ClInclude Include="src\rendersystem\swapchain.h" />
+    <ClInclude Include="src\rendersystem\types\floattypes.h" />
     <ClInclude Include="src\rendersystem\viewport.h" />
   </ItemGroup>
   <ItemGroup>

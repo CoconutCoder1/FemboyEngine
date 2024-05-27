@@ -48,6 +48,9 @@
     <ClInclude Include="src\rendersystem\shadercompiler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\rendersystem\types\floattypes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\rendersystem\dx11\renderdevicedx11.cpp">

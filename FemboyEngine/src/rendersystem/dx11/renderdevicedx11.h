@@ -73,6 +73,7 @@ public:
 	virtual PixelShader* CreatePixelShader(const void* pBytecode, size_t bytecodeLength);
 	virtual InputLayout* CreateInputLayout(InputElement_t const* const pElements, uint32_t numElements, const void* pShaderBytecode, size_t bytecodeLength);
 
+	virtual Buffer* CreateConstantBuffer(uint32_t bufferSize, BufferUsage::Enum usage, const void* pInitData);
 	virtual Buffer* CreateVertexBuffer(uint32_t numVertices, uint32_t strideInBytes, BufferUsage::Enum usage, const void* pInitData);
 
 	virtual Texture2D* CreateTexture2D(uint32_t width, uint32_t height, RenderFormat::Enum format, const void* pInitData, uint32_t arraySize);
@@ -101,8 +102,12 @@ public:
 
 	virtual void SetViewports(const Viewport_t* const ppViewports, uint32_t numViewports);
 
+	virtual void Map(Buffer* pBuffer, void** ppData);
+	virtual void Unmap(Buffer* pBuffer);
+
 	virtual void SetVertexShader(VertexShader* pVertexShader);
 	virtual void SetPixelShader(PixelShader* pVertexShader);
+	virtual void SetConstantBuffers(ShaderStage::Enum shaderStage, Buffer const* const* ppBuffers, uint32_t numBuffers);
 
 	virtual void ClearRenderTarget(const RenderTarget* pRenderTarget, const std::array<float, 4>& clearColor);
 	virtual void SetRenderTargets(RenderTarget const* const* ppRenderTargets, uint32_t numRenderTargets);

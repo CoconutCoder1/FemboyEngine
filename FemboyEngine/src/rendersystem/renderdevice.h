@@ -30,6 +30,7 @@ public:
 	virtual PixelShader* CreatePixelShader(const void* pBytecode, size_t bytecodeLength) = 0;
 	virtual InputLayout* CreateInputLayout(InputElement_t const* const pElements, uint32_t numElements, const void* pShaderBytecode, size_t bytecodeLength) = 0;
 
+	virtual Buffer* CreateConstantBuffer(uint32_t bufferSize, BufferUsage::Enum usage, const void* pInitData) = 0;
 	virtual Buffer* CreateVertexBuffer(uint32_t numVertices, uint32_t strideInBytes, BufferUsage::Enum usage, const void* pInitData) = 0;
 
 	virtual Texture2D* CreateTexture2D(uint32_t width, uint32_t height, RenderFormat::Enum format, const void* pInitData = nullptr, uint32_t arraySize = 1u) = 0;

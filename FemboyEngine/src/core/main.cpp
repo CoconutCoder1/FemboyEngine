@@ -1,4 +1,5 @@
 #include "rendersystem/rhi.h"
+#include "rendersystem/types/floattypes.h"
 
 #include "fstdlib/pointers.h"
 
@@ -45,7 +46,7 @@ static void* GetSDLWindowHandle_Win32() {
 }
 
 static bool CreateGameWindow() {
-	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
 		printf("SDL_Init failed: %s\n", SDL_GetError());
 		return false;
 	}
@@ -94,6 +95,11 @@ static bool CompileShader(const std::string& shaderFile, render::VertexShader** 
 	return true;
 }
 
+struct TestBuffer {
+	render::Float3 offset;
+	int pad;
+};
+
 int EntryPoint() {
 	LoadGameConfig();
 
@@ -138,6 +144,7 @@ int EntryPoint() {
 	render::RenderContext* pImmediateContext = g_pDevice->GetImmediateContext();
 
 	render::Buffer* pVB = g_pDevice->CreateVertexBuffer(_countof(vertices), sizeof(Vertex_t), render::BufferUsage::Default, vertices);
+	render::Buffer* pCB = g_pDevice->CreateConstantBuffer(sizeof(TestBuffer), render::BufferUsage::Dynamic, nullptr);
 
 	render::VertexShader* pVS;
 	render::PixelShader* pPS;
@@ -155,6 +162,8 @@ int EntryPoint() {
 	bool exitGame = false;
 
 	while (!exitGame) {
+		float time = static_cast<float>(static_cast<double>(SDL_GetTicks()) * 0.001);
+
 		SDL_Event ev;
 
 		while (SDL_PollEvent(&ev)) {
@@ -181,12 +190,18 @@ int EntryPoint() {
 		pImmediateContext->ClearRenderTarget(pRenderTarget, { 1.f, 0.f, 0.f, 1.f });
 		pImmediateContext->SetRenderTargets(&pRenderTarget, 1);
 
-		pImmediateContext->SetInputLayout(pInputLayout);
+		pImmediateContext->SetConstantBuffers(render::ShaderStage::Vertex, &pCB, 1);
 		pImmediateContext->SetVertexShader(pVS);
 		pImmediateContext->SetPixelShader(pPS);
 
+		TestBuffer* pTestBufferData;
+		pImmediateContext->Map(pCB, reinterpret_cast<void**>(&pTestBufferData));
+		pTestBufferData->offset = render::Float3(cos(time), 0.f, 0.f);
+		pImmediateContext->Unmap(pCB);
+
 		pImmediateContext->SetViewports(&viewport, 1);
 		pImmediateContext->SetPrimtiveTopology(render::PrimitiveToplogy::TriangleList);
+		pImmediateContext->SetInputLayout(pInputLayout);
 
 		pImmediateContext->SetVertexBuffer(pVB);
 		pImmediateContext->Draw(_countof(vertices), 0);
