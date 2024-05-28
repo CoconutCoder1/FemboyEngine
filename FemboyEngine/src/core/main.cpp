@@ -1,6 +1,9 @@
 #include "rendersystem/rhi.h"
 #include "rendersystem/types/floattypes.h"
 
+#include "mathlib/mathlib.h"
+#include "mathlib/matrix.h"
+
 #include "fstdlib/pointers.h"
 
 #define SDL_MAIN_HANDLED
@@ -96,7 +99,8 @@ static bool CompileShader(const std::string& shaderFile, render::VertexShader** 
 }
 
 struct TestBuffer {
-	render::Float4x4 transform;
+	render::Float4x4 projMat;
+	render::Float4x4 viewMat;
 };
 
 int EntryPoint() {
@@ -193,14 +197,21 @@ int EntryPoint() {
 		pImmediateContext->SetVertexShader(pVS);
 		pImmediateContext->SetPixelShader(pPS);
 
+		math::Matrix4x4 projMat = math::MakePerspectiveFovRH(70.f * math::Deg2Rad, 1.f, 0.01f, 100.f);
+		math::Matrix4x4 viewMat = math::MakeLookAtRH(math::Vector3(cosf(time * 2.f) * 4.f, 0.f, -3.f), math::Vector3(0.f, 0.f, 0.f), math::Vector3(0.f, 1.f, 0.f));
+
 		TestBuffer* pTestBufferData;
 		pImmediateContext->Map(pCB, reinterpret_cast<void**>(&pTestBufferData));
-		pTestBufferData->transform = render::Float4x4(
+
+		projMat.Copy(pTestBufferData->projMat.AsArray());
+		viewMat.Copy(pTestBufferData->viewMat.AsArray());
+
+		/*pTestBufferData->transform = render::Float4x4(
 			render::Float4(1.f, 0.f, 0.f, cosf(time)),
 			render::Float4(0.f, 1.f, 0.f, 0.f),
 			render::Float4(0.f, 0.f, 1.f, 0.f),
 			render::Float4(0.f, 0.f, 0.f, 1.f)
-		);
+		);*/
 		pImmediateContext->Unmap(pCB);
 
 		pImmediateContext->SetViewports(&viewport, 1);

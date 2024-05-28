@@ -51,6 +51,15 @@
     <ClInclude Include="src\rendersystem\types\floattypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\mathlib\vector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mathlib\matrix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mathlib\mathlib.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\rendersystem\dx11\renderdevicedx11.cpp">
@@ -60,6 +69,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\rendersystem\rhi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mathlib\matrix.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mathlib\vector.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

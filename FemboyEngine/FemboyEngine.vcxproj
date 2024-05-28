@@ -20,6 +20,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\fstdlib\pointers.h" />
+    <ClInclude Include="src\mathlib\mathlib.h" />
+    <ClInclude Include="src\mathlib\matrix.h" />
+    <ClInclude Include="src\mathlib\vector.h" />
     <ClInclude Include="src\rendersystem\dx11\dx11.h" />
     <ClInclude Include="src\rendersystem\dx11\renderdevicedx11.h" />
     <ClInclude Include="src\rendersystem\graphicsapi.h" />
@@ -34,6 +37,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\core\main.cpp" />
+    <ClCompile Include="src\mathlib\matrix.cpp" />
+    <ClCompile Include="src\mathlib\vector.cpp" />
     <ClCompile Include="src\rendersystem\dx11\renderdevicedx11.cpp" />
     <ClCompile Include="src\rendersystem\rhi.cpp" />
   </ItemGroup>

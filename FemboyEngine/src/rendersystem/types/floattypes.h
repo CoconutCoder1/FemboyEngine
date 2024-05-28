@@ -62,6 +62,10 @@ struct Float3x4 {
 struct Float4x4 {
 	Float4 m[4];
 
+	float* AsArray() {
+		return (&m[0].x);
+	}
+
 	Float4x4() {}
 
 	Float4x4(const Float4& m0, const Float4& m1, const Float4& m2, const Float4& m3) {
