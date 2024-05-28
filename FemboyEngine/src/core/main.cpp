@@ -96,8 +96,7 @@ static bool CompileShader(const std::string& shaderFile, render::VertexShader** 
 }
 
 struct TestBuffer {
-	render::Float3 offset;
-	int pad;
+	render::Float4x4 transform;
 };
 
 int EntryPoint() {
@@ -196,7 +195,12 @@ int EntryPoint() {
 
 		TestBuffer* pTestBufferData;
 		pImmediateContext->Map(pCB, reinterpret_cast<void**>(&pTestBufferData));
-		pTestBufferData->offset = render::Float3(cos(time), 0.f, 0.f);
+		pTestBufferData->transform = render::Float4x4(
+			render::Float4(1.f, 0.f, 0.f, cosf(time)),
+			render::Float4(0.f, 1.f, 0.f, 0.f),
+			render::Float4(0.f, 0.f, 1.f, 0.f),
+			render::Float4(0.f, 0.f, 0.f, 1.f)
+		);
 		pImmediateContext->Unmap(pCB);
 
 		pImmediateContext->SetViewports(&viewport, 1);

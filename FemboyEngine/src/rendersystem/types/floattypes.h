@@ -35,4 +35,41 @@ struct Float4 {
 		: x(x), y(y), z(z), w(w) {}
 };
 
+struct Float3x3 {
+	Float3 m[3];
+
+	Float3x3() {}
+
+	Float3x3(const Float3& m0, const Float3& m1, const Float3& m2) {
+		m[0] = m0;
+		m[1] = m1;
+		m[2] = m2;
+	}
+};
+
+struct Float3x4 {
+	Float4 m[3];
+
+	Float3x4() {}
+
+	Float3x4(const Float4& m0, const Float4& m1, const Float4& m2) {
+		m[0] = m0;
+		m[1] = m1;
+		m[2] = m2;
+	}
+};
+
+struct Float4x4 {
+	Float4 m[4];
+
+	Float4x4() {}
+
+	Float4x4(const Float4& m0, const Float4& m1, const Float4& m2, const Float4& m3) {
+		m[0] = m0;
+		m[1] = m1;
+		m[2] = m2;
+		m[3] = m3;
+	}
+};
+
 }
