@@ -2,13 +2,14 @@
 
 #include "scene.h"
 
+#include "core/singleton.h"
 #include "typeinfo/object.h"
 
 #include "fstdlib/pointers.h"
 
 namespace fe {
 
-class SceneSystem : public Inherit<Object, SceneSystem> {
+class SceneSystem : public Inherit<Object, SceneSystem>, public Singleton<SceneSystem> {
 public:
 	SceneSystem();
 

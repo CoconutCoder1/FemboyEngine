@@ -1,8 +1,12 @@
 #include "rendersystem/rhi.h"
 #include "rendersystem/types/floattypes.h"
 
+#include "scenesystem/scenesystem.h"
+
 #include "mathlib/mathlib.h"
 #include "mathlib/matrix.h"
+
+#include "gameconfig.h"
 
 #include "typeinfo/TypeInfo.h"
 
@@ -20,13 +24,6 @@
 
 namespace fe {
 
-struct GameConfig_t {
-	int32_t width;
-	int32_t height;
-	bool isFullscreen;
-	bool isBorderless;
-};
-
 struct Vertex_t {
 	float x, y, z;
 
@@ -39,8 +36,6 @@ struct Vertex_t {
 };
 
 static SDL_Window* g_pGameWindow = NULL;
-
-static GameConfig_t g_GameConfig;
 
 static render::RenderDevice* g_pDevice = nullptr;
 static render::SwapChain* g_pSwapChain = nullptr;
@@ -60,26 +55,30 @@ static bool CreateGameWindow() {
 
 	SDL_WindowFlags windowFlags = 0;
 
-	if (g_GameConfig.isFullscreen) {
+	if (GetGameConfig().isFullscreen) {
 		windowFlags |= SDL_WINDOW_FULLSCREEN;
 	}
-	if (g_GameConfig.isBorderless) {
+	if (GetGameConfig().isBorderless) {
 		windowFlags |= SDL_WINDOW_BORDERLESS;
 	}
 	
 	windowFlags |= SDL_WINDOW_RESIZABLE;
 
-	g_pGameWindow = SDL_CreateWindow("FemboyEngine", g_GameConfig.width, g_GameConfig.height, windowFlags);
+	g_pGameWindow = SDL_CreateWindow("FemboyEngine", GetGameConfig().width, GetGameConfig().height, windowFlags);
 
 	return true;
 }
 
 static void LoadGameConfig() {
-	g_GameConfig.isFullscreen = false;
-	g_GameConfig.isBorderless = false;
+	GameConfig_t gameConfig;
 
-	g_GameConfig.width = 800;
-	g_GameConfig.height = 600;
+	gameConfig.isFullscreen = false;
+	gameConfig.isBorderless = false;
+
+	gameConfig.width = 800;
+	gameConfig.height = 600;
+
+	SetGameConfig(gameConfig);
 }
 
 static bool CompileShader(const std::string& shaderFile, render::VertexShader** ppVertexShader, render::PixelShader** ppPixelShader, render::InputLayout** ppInputLayout, const render::InputElement_t* const pInputElements, uint32_t numElements) {
@@ -117,6 +116,8 @@ int EntryPoint() {
 		printf("Creating game window failed.\n");
 		return -1;
 	}
+
+	SceneSystem::CreateInstance();
 	
 	ScopedPtr<render::RHI> pRHI = ScopedPtr<render::RHI>(new render::RHI(render::GraphicsAPI::DirectX11));
 
@@ -134,7 +135,7 @@ int EntryPoint() {
 	swapChainParams.pOutputWindow = GetSDLWindowHandle_Win32();
 	swapChainParams.width = 0;
 	swapChainParams.height = 0;
-	swapChainParams.isFullscreen = g_GameConfig.isFullscreen;
+	swapChainParams.isFullscreen = GetGameConfig().isFullscreen;
 
 	g_pSwapChain = g_pDevice->CreateSwapChain(swapChainParams);
 	
@@ -189,11 +190,14 @@ int EntryPoint() {
 			if (ev.type == SDL_EVENT_WINDOW_EXPOSED || ev.type == SDL_EVENT_WINDOW_RESIZED) {
 				g_pSwapChain->ResizeBuffers();
 
-				SDL_GetWindowSize(g_pGameWindow, &g_GameConfig.width, &g_GameConfig.height);
+				int32_t width, height;
+				SDL_GetWindowSize(g_pGameWindow, &width, &height);
+
+				SetGameConfigResolution(width, height);
 			}
 		}
 
-		render::Viewport_t viewport(static_cast<float>(g_GameConfig.width), static_cast<float>(g_GameConfig.height));
+		render::Viewport_t viewport(static_cast<float>(GetGameConfig().width), static_cast<float>(GetGameConfig().height));
 
 		render::RenderTarget* pRenderTarget = g_pSwapChain->GetBackBufferTarget();
 
@@ -203,6 +207,8 @@ int EntryPoint() {
 		pImmediateContext->SetConstantBuffers(render::ShaderStage::Vertex, &pCB, 1);
 		pImmediateContext->SetVertexShader(pVS);
 		pImmediateContext->SetPixelShader(pPS);
+
+
 
 		math::Matrix4x4 projMat = math::MakePerspectiveFovRH(70.f * math::Deg2Rad, 1.f, 0.01f, 100.f);
 		math::Matrix4x4 viewMat = math::MakeLookAtRH(math::Vector3(cosf(time * 2.f) * 4.f, 0.f, -3.f), math::Vector3(0.f, 0.f, 0.f), math::Vector3(0.f, 1.f, 0.f));
@@ -228,9 +234,20 @@ int EntryPoint() {
 		pImmediateContext->SetVertexBuffer(pVB);
 		pImmediateContext->Draw(_countof(vertices), 0);
 
+		Scene* pActiveScene = SceneSystem::Instance().GetActiveScene();
+		if (pActiveScene) {
+			Camera* pCamera = pActiveScene->GetActiveCamera();
+
+			if (pCamera) {
+				pCamera->Render(pImmediateContext);
+			}
+		}
+
 		g_pSwapChain->Present();
 	}
 	
+	SceneSystem::DeleteInstance();
+
 	pRHI->RemoveRenderDevice(g_pDevice);
 
 	return 0;
