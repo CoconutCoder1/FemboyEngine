@@ -4,7 +4,11 @@
 #include "mathlib/mathlib.h"
 #include "mathlib/matrix.h"
 
+#include "typeinfo/TypeInfo.h"
+
 #include "fstdlib/pointers.h"
+
+#include <iostream>
 
 #define SDL_MAIN_HANDLED
 #include <SDL3/SDL.h>
@@ -104,6 +108,9 @@ struct TestBuffer {
 };
 
 int EntryPoint() {
+	fe::typeinfo::initialize();
+	fe::typeinfo::dbgWriteTypeTreeToFile(std::cout);
+
 	LoadGameConfig();
 
 	if (!CreateGameWindow()) {

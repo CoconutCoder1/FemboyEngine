@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\fstdlib\linkedlist.h" />
     <ClInclude Include="src\fstdlib\pointers.h" />
     <ClInclude Include="src\mathlib\mathlib.h" />
     <ClInclude Include="src\mathlib\matrix.h" />
@@ -26,6 +27,7 @@
     <ClInclude Include="src\rendersystem\dx11\dx11.h" />
     <ClInclude Include="src\rendersystem\dx11\renderdevicedx11.h" />
     <ClInclude Include="src\rendersystem\graphicsapi.h" />
+    <ClInclude Include="src\rendersystem\layer.h" />
     <ClInclude Include="src\rendersystem\rendercontext.h" />
     <ClInclude Include="src\rendersystem\renderdevice.h" />
     <ClInclude Include="src\rendersystem\renderresource.h" />
@@ -34,6 +36,13 @@
     <ClInclude Include="src\rendersystem\swapchain.h" />
     <ClInclude Include="src\rendersystem\types\floattypes.h" />
     <ClInclude Include="src\rendersystem\viewport.h" />
+    <ClInclude Include="src\scenesystem\component.h" />
+    <ClInclude Include="src\scenesystem\scene.h" />
+    <ClInclude Include="src\scenesystem\sceneobject.h" />
+    <ClInclude Include="src\scenesystem\scenesystem.h" />
+    <ClInclude Include="src\typeinfo\inherit.h" />
+    <ClInclude Include="src\typeinfo\object.h" />
+    <ClInclude Include="src\typeinfo\typeinfo.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\core\main.cpp" />
@@ -41,6 +50,12 @@
     <ClCompile Include="src\mathlib\vector.cpp" />
     <ClCompile Include="src\rendersystem\dx11\renderdevicedx11.cpp" />
     <ClCompile Include="src\rendersystem\rhi.cpp" />
+    <ClCompile Include="src\scenesystem\component.cpp" />
+    <ClCompile Include="src\scenesystem\scene.cpp" />
+    <ClCompile Include="src\scenesystem\sceneobject.cpp" />
+    <ClCompile Include="src\scenesystem\scenesystem.cpp" />
+    <ClCompile Include="src\typeinfo\object.cpp" />
+    <ClCompile Include="src\typeinfo\typeinfo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="src\hlsl\lit.hlsl">

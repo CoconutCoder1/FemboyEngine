@@ -260,9 +260,9 @@ void RenderDeviceDx11::Shutdown() {
 
 	m_pDeviceContext.Reset();
 
-	RenderResourceIterator_t* pResourceIter = m_RenderResourceList.pHead;
+	RenderResourceIterator_t* pResourceIter = m_RenderResourceList.GetHead();
 	while (pResourceIter) {
-		while (ReleaseResourceEx(pResourceIter->pResource, false) > 0);
+		while (ReleaseResourceEx(pResourceIter->pData, false) > 0);
 		pResourceIter = pResourceIter->pNext;
 	}
 	m_RenderResourceList.Clear();

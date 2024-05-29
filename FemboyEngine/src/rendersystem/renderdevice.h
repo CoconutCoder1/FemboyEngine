@@ -62,9 +62,7 @@ public:
 	}
 
 	RenderResource* RegisterResource(RenderResource* pResource) {
-		m_RenderResourceList.AddToTail(pResource);
-
-		pResource->m_pIterator = m_RenderResourceList.pTail;
+		pResource->m_pIterator = m_RenderResourceList.AddToTail(pResource);
 
 		return pResource;
 	}
